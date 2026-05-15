@@ -1,0 +1,25 @@
+{
+  "global": {
+    "url": "https://www.cmf.tn/?q=consultation-des-tats-financier-des-soci-t-s-faisant-ape",
+    "param_key": "field_societesape_value",
+    "min_year": 2014,
+    "max_year": 2024
+  },
+  "companies": [
+    {
+      "name": "GROUPE LAND'OR",
+      "folder": "GROUPE_LANDOR",
+      "filename_prefix": "LANDOR"
+    },
+    {
+      "name": "GROUPE Sté. DELICE HOLDING",
+      "folder": "GROUPE_DELICE",
+      "filename_prefix": "DELICE"
+    },
+    {
+      "name": "GROUPE POULINA GROUPE HOLDING -PGH -",
+      "folder": "GROUPE_POULINA",
+      "filename_prefix": "POULINA"
+    }
+  ]
+}

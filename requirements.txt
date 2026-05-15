@@ -3,3 +3,5 @@ beautifulsoup4
 pdfplumber
 pandas
 openpyxl
+tabula-py
+jpype1
