@@ -2,35 +2,20 @@ import pickle
 from pathlib import Path
 import pandas as pd
 
-PKL_DIR = Path(r"C:\Users\mariem\workspace\FiscalTrack\data\raw\GROUPE_LANDOR")
+file_path = Path("output/GROUPE_LANDOR/LANDOR_tables.pkl")
 
-# List all PKL files
-pkl_files = list(PKL_DIR.glob("*_raw.pkl"))
-
-print("Available PKL files:")
-for i, pkl in enumerate(pkl_files):
-    print(f"{i} → {pkl.name}")
-
-choice = input("\nEnter the number of the PKL you want to open (or 'all'): ")
-
-if choice.lower() == "all":
-    for pkl in pkl_files:
-        print(f"\n\n===== {pkl.name} =====")
-        with open(pkl, "rb") as f:
-            tables = pickle.load(f)
-        print(f"Number of tables: {len(tables)}")
-        for i, df in enumerate(tables):
-            print(f"\n--- TABLE {i} ---")
-            print(df)
+if not file_path.exists():
+    print("❌ File not found:", file_path)
 else:
-    idx = int(choice)
-    pkl = pkl_files[idx]
-    print(f"\nLoading: {pkl.name}")
-
-    with open(pkl, "rb") as f:
+    with open(file_path, "rb") as f:
         tables = pickle.load(f)
 
-    print(f"\nNumber of tables: {len(tables)}")
+    print("✅ File loaded successfully")
+    print("Number of tables:", len(tables))
+
     for i, df in enumerate(tables):
-        print(f"\n--- TABLE {i} ---")
-        print(df)
+        print("\n" + "="*50)
+        print(f"📊 TABLE {i} - shape: {df.shape}")
+        print("="*50)
+
+        print(df)   # affiche le contenu complet
