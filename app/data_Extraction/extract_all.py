@@ -50,6 +50,8 @@ def extract_tables(pdf_path: Path) -> list[pd.DataFrame]:
             multiple_tables=True,
             silent=True,
             pandas_options={"dtype": str},
+            
+
         )
         return [df for df in tables if df.shape[0] >= 3 and df.shape[1] >= 2]
 
