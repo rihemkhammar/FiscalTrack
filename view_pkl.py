@@ -1,36 +1,27 @@
 import pickle
-from pathlib import Path
 import pandas as pd
+from pathlib import Path
 
-PKL_DIR = Path(r"C:\Users\mariem\workspace\FiscalTrack\data\raw\GROUPE_LANDOR")
+# Make pandas show all rows/columns
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
 
-# List all PKL files
-pkl_files = list(PKL_DIR.glob("*_raw.pkl"))
+MERGED_PATH = Path(r"C:\Users\mariem\workspace\FiscalTrack\data\processed\GROUPE_LANDOR\LANDOR_2014_merged.pkl")
 
-print("Available PKL files:")
-for i, pkl in enumerate(pkl_files):
-    print(f"{i} → {pkl.name}")
+with open(MERGED_PATH, "rb") as f:
+    merged_data = pickle.load(f)
 
-choice = input("\nEnter the number of the PKL you want to open (or 'all'): ")
+print("Keys in merged data:", merged_data.keys())
 
-if choice.lower() == "all":
-    for pkl in pkl_files:
-        print(f"\n\n===== {pkl.name} =====")
-        with open(pkl, "rb") as f:
-            tables = pickle.load(f)
-        print(f"Number of tables: {len(tables)}")
-        for i, df in enumerate(tables):
-            print(f"\n--- TABLE {i} ---")
-            print(df)
-else:
-    idx = int(choice)
-    pkl = pkl_files[idx]
-    print(f"\nLoading: {pkl.name}")
+structured_tables = merged_data["structured"]
+print("Structured tables count:", len(structured_tables))
 
-    with open(pkl, "rb") as f:
-        tables = pickle.load(f)
+context_tables = merged_data["context"]
+print("Context tables count:", len(context_tables))
 
-    print(f"\nNumber of tables: {len(tables)}")
-    for i, df in enumerate(tables):
-        print(f"\n--- TABLE {i} ---")
-        print(df)
+# Loop through all context tables and show full content
+for i, df in enumerate(context_tables):
+    print(f"\n=== Context Table {i} ===")
+    print(df)   # prints the entire DataFrame
