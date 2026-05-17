@@ -1,8 +1,7 @@
 """
 app/data_Extraction/extract_all.py
 -----------------------------------
-Logique d'extraction PDF → Excel + PKL.
-Consommé par app/extractor.py
+Logique d'extraction PDF → Excel + PKL (mode incrémental).
 """
 
 import json
@@ -20,16 +19,26 @@ def load_config(config_path: Path) -> dict:
         return json.load(f)
 
 
+def load_existing_pkl(path: Path) -> dict:
+    """Charge les anciennes données si elles existent"""
+    if path.exists():
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    return {}
+
+
 def find_pdfs(base_dir: Path, folder: str, prefix: str,
               min_year: int, max_year: int) -> list[tuple[int, Path]]:
     input_dir = base_dir / "input" / folder
     results = []
+
     for year in range(min_year, max_year + 1):
         pdf = input_dir / f"{prefix}_{year}.pdf"
         if pdf.exists():
             results.append((year, pdf))
         else:
             print(f"  ⚠️  introuvable : {pdf.name}")
+
     return results
 
 
@@ -43,6 +52,7 @@ def extract_tables(pdf_path: Path) -> list[pd.DataFrame]:
             pandas_options={"dtype": str},
         )
         return [df for df in tables if df.shape[0] >= 3 and df.shape[1] >= 2]
+
     except Exception as e:
         print(f"    ❌ Erreur : {e}")
         return []
@@ -50,36 +60,43 @@ def extract_tables(pdf_path: Path) -> list[pd.DataFrame]:
 
 def save_excel(data: dict, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         for year, tables in sorted(data.items()):
             for i, df in enumerate(tables):
                 sheet_name = f"{year}_T{i:02d}"[:31]
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
+
     total = sum(len(v) for v in data.values())
-    print(f"  📊 Excel → {out_path.name}  ({total} feuilles)")
+    print(f"  📊 Excel → {out_path.name} ({total} tables)")
 
 
 def save_pkl(data: dict, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
     with open(out_path, "wb") as f:
         pickle.dump(data, f)
+
     print(f"  🥒 PKL   → {out_path.name}")
 
 
 def process_company(company: dict, global_cfg: dict,
                     base_dir: Path, output_dir: Path,
                     year_filter: int | None = None) -> None:
+
     name   = company["name"]
     folder = company["folder"]
     prefix = company["filename_prefix"]
-    min_y  = global_cfg.get("min_year", 2014)
-    max_y  = global_cfg.get("max_year", 2024)
+
+    min_y = global_cfg.get("min_year", 2014)
+    max_y = global_cfg.get("max_year", 2024)
 
     print(f"\n{'='*60}")
     print(f"🏢  {name}")
     print(f"{'='*60}")
 
     pdfs = find_pdfs(base_dir, folder, prefix, min_y, max_y)
+
     if year_filter:
         pdfs = [(y, p) for y, p in pdfs if y == year_filter]
 
@@ -87,36 +104,39 @@ def process_company(company: dict, global_cfg: dict,
         print("  Aucun PDF trouvé.")
         return
 
-    all_data: dict[int, list[pd.DataFrame]] = {}
+    out_dir = output_dir / folder
+    pkl_path = out_dir / f"{prefix}_tables.pkl"
+
+    # 🔥 CHARGEMENT ANCIENNES DONNÉES
+    all_data: dict[int, list[pd.DataFrame]] = load_existing_pkl(pkl_path)
+
     for year, pdf_path in pdfs:
         print(f"\n  📄 {pdf_path.name} …", end=" ", flush=True)
-        tables = extract_tables(pdf_path)
-        print(f"{len(tables)} tableau(x) utile(s)")
-        all_data[year] = tables
+
+        new_tables = extract_tables(pdf_path)
+        print(f"{len(new_tables)} tableau(x) utile(s)")
+
+        if year not in all_data:
+            all_data[year] = []
+
+        # 🔥 merge sans doublons simples
+        for df in new_tables:
+            if not any(df.equals(old) for old in all_data[year]):
+                all_data[year].append(df)
 
     if all_data:
-        out = output_dir / folder
-        save_excel(all_data, out / f"{prefix}_tables.xlsx")
-        save_pkl(all_data,   out / f"{prefix}_tables.pkl")
+        save_excel(all_data, out_dir / f"{prefix}_tables.xlsx")
+        save_pkl(all_data, pkl_path)
     else:
         print("  ⚠️  Aucune donnée extraite.")
 
 
-# ── point d'entrée appelable ─────────────────────────────────────────────────
+# ── API principale ───────────────────────────────────────────────────────────
 
 def extract(base_dir: Path, output_dir: Path,
             company_filter: str | None = None,
             year_filter: int | None = None) -> None:
-    """
-    Fonction principale — appelée par app/extractor.py
 
-    Paramètres
-    ----------
-    base_dir      : racine du projet (contient input/)
-    output_dir    : dossier de sortie (ex: base_dir / "output")
-    company_filter: prefix entreprise à filtrer (ex: "DELICE"), ou None = toutes
-    year_filter   : année à filtrer (ex: 2021), ou None = toutes
-    """
     config_path = Path(__file__).resolve().parents[1] / "config" / "companies.json"
 
     print(f"📂 Projet  : {base_dir}")
